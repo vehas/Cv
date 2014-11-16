@@ -9,14 +9,16 @@ using namespace cv;
 using namespace std;
 typedef vector<vector<Point> > contour;
 typedef vector<Vec4i> hierarchy;
+
 Mat showCanny(Mat input){
 	Mat graySrc, outCanny;
 
-
-	cvtColor(input, graySrc, CV_BGR2GRAY);
+	/// guess input is gray 
+	graySrc = input;
+	//cvtColor(input, graySrc, CV_BGR2GRAY);
 	
 	/// set up 
-	int min1 = 5,
+	int min1 = 20,
 		max1 = 255,
 		step1 =5,
 		min2 = 5,
@@ -29,41 +31,14 @@ Mat showCanny(Mat input){
 	namedWindow("canny", 1);
 	createTrackbar("cannyT1", "canny", &th1, max1);
 	createTrackbar("cannyT2", "canny", &th2, max2);
-	//Mat canny_output;
-	contour contours;
-	hierarchy hierarchy;
-	RNG rng(12345);
-	Mat drawing = Mat::zeros(input.size(), CV_8UC3);
+	
+	
 
 	while (loop){
 		
-		cv::Canny(graySrc, outCanny, th1, th1*3);
-
-		GaussianBlur(outCanny, outCanny, Size(3,3), 0, 0);
+		
+		cv::Canny(graySrc, outCanny, th1,th2);
 		imshow("canny", outCanny);
-		
-		findContours(outCanny, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-		
-		//find outter contour
-		int contourNum = contours.size();
-		contour big;
-		for (int i = 0; i < contourNum; i++){
-			if (hierarchy[i][3] < 0)
-				big.push_back(contours[i]);
-		}
-
-		//end find outter contour
-
-
-		/// Draw contours
-		drawing = Mat::zeros(input.size(), CV_8UC3);
-		for (int i = 0; i< big.size(); i++)
-		{
-			Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-			drawContours(drawing, big, i, color, 2, 8, hierarchy, 0, Point());
-		}
-
-		imshow("Contours", drawing);
 
 		
 		switch (key = waitKey(30)) {
@@ -82,41 +57,128 @@ Mat showCanny(Mat input){
 	return outCanny;
 }
 
-
-
-int main(){
-	Mat input_image, graySrc,outCanny,outGauss;
-	input_image = imread("c:\\opencv\\p1.jpg"); //path to image
-
-	imshow("Hello OpenCV!", input_image);
+void findPaint(Mat input){
+	RNG rng(12345);
+	Mat graySrc, outCanny;
+	// guess  input in gray //else cvtColor(input, graySrc, CV_BGR2GRAY);
+	graySrc = input;
 	
-	cvtColor(input_image, graySrc, CV_BGR2GRAY);
-
-	GaussianBlur(graySrc, outGauss, Size(4,4), 0, 0);
-	imshow("GaussianBlur", outGauss);
+	///  find edge  with canny & mean theashol
+	Scalar mu, sigma;
+	meanStdDev(graySrc, mu, sigma);
+	cv::Canny(graySrc, outCanny, mu.val[0] - sigma.val[0], mu.val[0] - sigma.val[0]);
 	/*  //  adaptiveThreshold
 	Mat outAts;
 	adaptiveThreshold(outGauss, outAts, 255, ADAPTIVE_THRESH_GAUSSIAN_C,
-		THRESH_BINARY, 11, 2);
-		imshow("adaptiveThreshold", outAts);
+	THRESH_BINARY, 11, 2);
+	imshow("adaptiveThreshold", outAts);
 
-		*/
+	*/
 
-	/// Apply the dilation operation
-	int dilation_type = MORPH_RECT, dilation_size = 3;
+	// blur edge for find contour 
+	GaussianBlur(outCanny, outCanny, Size(3, 3), 0, 0);
+	
+	//find contours
+	contour contours;
+	hierarchy hierarchy;
+	findContours(outCanny, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	
+	
+	//find outter contour
+	int contourNum = contours.size();
+	contour big;
+	for (int i = 0; i < contourNum; i++){
+		if (hierarchy[i][3] < 0)
+			big.push_back(contours[i]);
+	}
+	Mat drawingContour = Mat::zeros(input.size(), CV_8UC3);
+	for (int i = 0; i< big.size(); i++)
+	{
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		drawContours(drawingContour, big, i, color, 2, 8, hierarchy, 0, Point());
+	}
+
+
+	// find Rect
+	vector<RotatedRect> minRect(big.size());
+	for (int i = 0; i < big.size(); i++)
+	{
+		minRect[i] = minAreaRect(Mat(big[i]));
+
+	}
+
+	// select  large  enought aera 
+	//  more than  20% of imaage
+	float scaleimageSize = input.size().area()*0.1*0.1, max = 0;
+	vector<RotatedRect> BigMinRect;
+	cout << " scaleimageSize " << scaleimageSize << endl;
+	for (int i = 0; i < minRect.size(); i++)
+	{
+		//cout << minRect[i].size.area() << endl;
+		if (max < minRect[i].size.area()) max = minRect[i].size.area();
+		if (minRect[i].size.area() > scaleimageSize)
+			BigMinRect.push_back(minRect[i]);
+	}
+	cout << "max : " << max << endl;
+	minRect = BigMinRect;
+	for (int i = 0; i < minRect.size(); i++)
+	{
+		cout << minRect[i].size.area() << endl;
+	}
+	
+
+	/// draw line of reg
+	
+	Mat drawing = Mat::zeros(input.size(), CV_8UC3);
+	for (int i = 0; i< minRect.size(); i++)
+	{
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		// contour
+		//drawContours(drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+
+		// rotated rectangle
+		Point2f rect_points[4]; minRect[i].points(rect_points);
+		for (int j = 0; j < 4; j++)
+			line(drawing, rect_points[j], rect_points[(j + 1) % 4], color, 1, 8);
+	}
+	
+	waitKey(0);
+	}
+Mat  prepare(Mat input){
+	///  convert to gray 
+	Mat graySrc;
+	cvtColor(input, graySrc, CV_BGR2GRAY);
+	///  blur it
+	Mat outGauss;
+	GaussianBlur(graySrc, outGauss, Size(5, 5), 0, 0);
+	
+	///   prepare dilate & erode
+	int dilation_type = MORPH_RECT,
+		dilation_size = 3;
 	Mat element = getStructuringElement(dilation_type,
 		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
 		Point(dilation_size, dilation_size));
+	
+	/// Apply the dilation 
 	Mat outDilate;
-	dilate(outGauss,outDilate, element);
-	imshow("Dilation Demo", outDilate);
-	// 
+	dilate(outGauss, outDilate, element);
+	
+	/// apply Erode 
 	Mat outErode;
 	erode(outDilate, outErode, element);
-	imshow("Dilation Demo", outErode);
-
-	outCanny =  showCanny(outErode);
 	
+	return outErode;
+
+}
+
+int main(){
+	Mat input_image, outPrepare;
+	input_image = imread("c:\\opencv\\p2.jpg"); //path to image
+
+	///outCanny =  showCanny(outErode);
+	outPrepare = prepare(input_image);
+	findPaint(outPrepare);
+
 	
 	waitKey(0);
 	return 0;
