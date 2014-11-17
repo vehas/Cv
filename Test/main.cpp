@@ -115,57 +115,28 @@ vector<Mat> findPaint(Mat input){
 	cout << " scaleimageSize " << scaleimageSize << endl;
 	for (int i = 0; i < minRect.size(); i++)
 	{
-		//cout << minRect[i].size.area() << endl;
 		if (max < minRect[i].area()) max = minRect[i].area();
 		if (minRect[i].area() > scaleimageSize)
 			BigMinRect.push_back(minRect[i]);
 	}
-	/* cout << "max : " << max << endl;
-	minRect = BigMinRect;
-	for (int i = 0; i < minRect.size(); i++)
-	{
-		cout << minRect[i].area() << endl;
-	} */
 	
 
-	/// draw line of reg
+	/// draw each image  ,  pussh it to vector img
 	
 	Mat drawing = Mat::zeros(input.size(), CV_8UC3);
 	vector<Mat> img;
 	img.reserve(minRect.size());
-
-	
-	for (int i = 0; i< BigMinRect.size(); i++)
-	{
+		for (int i = 0; i< BigMinRect.size(); i++)
+	    {
 		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-		// contour
-		//drawContours(drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
-
-		// rotated rectangle
-		//Point rect_points[4]; //minRect[i].point(rect_points); //minRect[i].
-		//Point rp[1][4];
-		//int xmin = 100000000, ymin = 10000000;
-		//for (int j = 0; j < 4; j++)  { 
-		
-		//	if (rect_points[j].x <=  xmin && rect_points[j].x <= ymin)
-
-		//}
-		//for (int j = 0; j < 4; j++)
-			//line(drawing, rect_points[j], rect_points[(j + 1) % 4], color, 1, 8);
-		//const Point* ppt[1] = { rp[0] };
-		//int a[] = { 4 };
-		//fillPoly(drawing, ppt, a,1,Scalar(255,255,255) ,8);
 		rectangle(drawing,BigMinRect[i],color);
 
-		//img.push_back(input(BigMinRect[i]));
+		
 		Mat roi = input(BigMinRect[i]);
 		Mat last;
 		roi.copyTo(last);
 		img.push_back(last);
-		//imshow("lalalala" + to_string(i), last);
-
-		
-	}
+		}
 	
 	return img;
 	waitKey(0);
