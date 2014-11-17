@@ -2,6 +2,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "iostream"
+#include <vector>
 //#include "image.h"
 #include <windows.h>
 
@@ -57,7 +58,7 @@ Mat showCanny(Mat input){
 	return outCanny;
 }
 
-void findPaint(Mat input){
+vector<Mat> findPaint(Mat input){
 	RNG rng(12345);
 	Mat graySrc, outCanny;
 	// guess  input in gray //else cvtColor(input, graySrc, CV_BGR2GRAY);
@@ -100,57 +101,73 @@ void findPaint(Mat input){
 
 
 	// find Rect
-	vector<RotatedRect> minRect(big.size());
+	vector<Rect> minRect(big.size());
 	for (int i = 0; i < big.size(); i++)
 	{
-		minRect[i] = minAreaRect(Mat(big[i]));
+		minRect[i] = boundingRect(Mat(big[i]));
 
 	}
 
 	// select  large  enought aera 
 	//  more than  20% of imaage
 	float scaleimageSize = input.size().area()*0.1*0.1, max = 0;
-	vector<RotatedRect> BigMinRect;
+	vector<Rect> BigMinRect;
 	cout << " scaleimageSize " << scaleimageSize << endl;
 	for (int i = 0; i < minRect.size(); i++)
 	{
 		//cout << minRect[i].size.area() << endl;
-		if (max < minRect[i].size.area()) max = minRect[i].size.area();
-		if (minRect[i].size.area() > scaleimageSize)
+		if (max < minRect[i].area()) max = minRect[i].area();
+		if (minRect[i].area() > scaleimageSize)
 			BigMinRect.push_back(minRect[i]);
 	}
-	cout << "max : " << max << endl;
+	/* cout << "max : " << max << endl;
 	minRect = BigMinRect;
 	for (int i = 0; i < minRect.size(); i++)
 	{
-		cout << minRect[i].size.area() << endl;
-	}
+		cout << minRect[i].area() << endl;
+	} */
 	
 
 	/// draw line of reg
 	
 	Mat drawing = Mat::zeros(input.size(), CV_8UC3);
-	for (int i = 0; i< minRect.size(); i++)
+	vector<Mat> img;
+	img.reserve(minRect.size());
+
+	
+	for (int i = 0; i< BigMinRect.size(); i++)
 	{
 		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 		// contour
 		//drawContours(drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
 
 		// rotated rectangle
-		Point2f rect_points[4]; minRect[i].points(rect_points);
-		Point rp[1][4];
-		for (int j = 0; j < 4; j++)  { 
-			rp[0][j].x = (int)rect_points[j].x; 
-			rp[0][j].y = (int)rect_points[j].y;
-		}
+		//Point rect_points[4]; //minRect[i].point(rect_points); //minRect[i].
+		//Point rp[1][4];
+		//int xmin = 100000000, ymin = 10000000;
+		//for (int j = 0; j < 4; j++)  { 
+		
+		//	if (rect_points[j].x <=  xmin && rect_points[j].x <= ymin)
+
+		//}
 		//for (int j = 0; j < 4; j++)
 			//line(drawing, rect_points[j], rect_points[(j + 1) % 4], color, 1, 8);
-		const Point* ppt[1] = { rp[0] };
-		int a[] = { 4 };
-		fillPoly(drawing, ppt, a,1,Scalar(255,255,255) ,8);
-	}
+		//const Point* ppt[1] = { rp[0] };
+		//int a[] = { 4 };
+		//fillPoly(drawing, ppt, a,1,Scalar(255,255,255) ,8);
+		rectangle(drawing,BigMinRect[i],color);
 
+		//img.push_back(input(BigMinRect[i]));
+		Mat roi = input(BigMinRect[i]);
+		Mat last;
+		roi.copyTo(last);
+		img.push_back(last);
+		//imshow("lalalala" + to_string(i), last);
+
+		
+	}
 	
+	return img;
 	waitKey(0);
 	}
 Mat  prepare(Mat input){
@@ -182,11 +199,12 @@ Mat  prepare(Mat input){
 
 int main(){
 	Mat input_image, outPrepare;
-	input_image = imread("D:\\$$333333_comPADA\\CV\\ImgProject\\in\\1.jpg"); //path to image
+	vector<Mat> data;
+	input_image = imread("D:\\$$333333_comPADA\\CV\\ImgProject\\in\\6.jpg"); //path to image
 
 	///outCanny =  showCanny(outErode);
 	outPrepare = prepare(input_image);
-	findPaint(outPrepare);
+	data =findPaint(outPrepare);
 
 	
 	waitKey(0);
