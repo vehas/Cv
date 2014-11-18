@@ -58,16 +58,19 @@ Mat showCanny(Mat input){
 	return outCanny;
 }
 
-vector<Mat> findPaint(Mat input){
+vector<Mat> findPaint(Mat input,Mat real){
 	RNG rng(12345);
 	Mat graySrc, outCanny;
 	// guess  input in gray //else cvtColor(input, graySrc, CV_BGR2GRAY);
 	graySrc = input;
 	
 	///  find edge  with canny & mean theashol
+	
 	Scalar mu, sigma;
 	meanStdDev(graySrc, mu, sigma);
-	cv::Canny(graySrc, outCanny, mu.val[0] - sigma.val[0], mu.val[0] - sigma.val[0]);
+	//cv::Canny(graySrc, outCanny, mu.val[0] - sigma.val[0], mu.val[0] - sigma.val[0]);
+	threshold(graySrc, outCanny,mu.val[0], 255, THRESH_BINARY);
+	//outCanny = graySrc;
 	/*  //  adaptiveThreshold
 	Mat outAts;
 	adaptiveThreshold(outGauss, outAts, 255, ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -77,13 +80,14 @@ vector<Mat> findPaint(Mat input){
 	*/
 
 	// blur edge for find contour 
-	GaussianBlur(outCanny, outCanny, Size(3, 3), 0, 0);
+	//GaussianBlur(outCanny, outCanny, Size(3, 3), 0, 0);
 	
 	//find contours
 	contour contours;
 	hierarchy hierarchy;
+	imshow("before", input);
 	findContours(outCanny, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-	
+	imshow("after", input);
 	
 	//find outter contour
 	int contourNum = contours.size();
@@ -132,7 +136,7 @@ vector<Mat> findPaint(Mat input){
 		rectangle(drawing,BigMinRect[i],color);
 
 		
-		Mat roi = input(BigMinRect[i]);
+		Mat roi = real(BigMinRect[i]);
 		Mat last;
 		roi.copyTo(last);
 		img.push_back(last);
@@ -145,9 +149,15 @@ Mat  prepare(Mat input){
 	///  convert to gray 
 	Mat graySrc;
 	cvtColor(input, graySrc, CV_BGR2GRAY);
+	Mat Lapa;
+	Laplacian(graySrc, Lapa, CV_8UC1);
+
+
+
+
 	///  blur it
 	Mat outGauss;
-	GaussianBlur(graySrc, outGauss, Size(5, 5), 0, 0);
+	GaussianBlur(Lapa, outGauss, Size(5, 5), 0, 0);
 	
 	///   prepare dilate & erode
 	int dilation_type = MORPH_RECT,
@@ -164,19 +174,60 @@ Mat  prepare(Mat input){
 	Mat outErode;
 	erode(outDilate, outErode, element);
 	
+
+
 	return outErode;
 
 }
+vector<Mat> realimg(vector<Mat> input){
+
+
+	return; 
+}
 
 int main(){
+	
 	Mat input_image, outPrepare;
 	vector<Mat> data;
-	input_image = imread("D:\\$$333333_comPADA\\CV\\ImgProject\\in\\6.jpg"); //path to image
+	
+	input_image = imread("D:\\$$333333_comPADA\\CV\\ImgProject\\in\\test1.jpg"); //path to image
 
-	///outCanny =  showCanny(outErode);
+    //outCanny =  showCanny(outErode);
+	//outPrepare = prepare(input_image);
 	outPrepare = prepare(input_image);
-	data =findPaint(outPrepare);
+	data = findPaint(outPrepare,input_image);
+	for (int i = 0; i < data.size(); i++){
+		imwrite("D:\\$$333333_comPADA\\CV\\ImgProject\\test\\out10_"+to_string(i)+".jpg", data[i]);
+	
+	}
 
+	
+	
+	/////////////////////////////////////////////////////
+/*	VideoCapture cap(0);
+	if (!cap.isOpened()) return -1;
+	int key;
+	int count=0;
+	bool loop = true ,inv = true;
+	while (loop) {
+		Mat frame;
+		cap >> frame;
+		//input_image = imread("D:\\$$333333_comPADA\\CV\\ImgProject\\in\\6.jpg"); //path to image
+
+		///outCanny =  showCanny(outErode);
+		//outPrepare = prepare(input_image);
+		outPrepare = prepare(frame);
+
+		data = findPaint(outPrepare);
+		imwrite("D:\\$$333333_comPADA\\CV\\ImgProject\\out" + to_string(count) + ".jpg", data[0]); count++;
+
+		switch (key = waitKey(30)) {
+		case 27: loop = false; break;
+		case 67: case 99: imwrite("out" + to_string(count) + ".jpg", data); count++; break;
+		case 'i': inv = !inv;
+
+		}
+	}*/
 	
 	waitKey(0);
 	return 0;
